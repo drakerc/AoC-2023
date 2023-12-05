@@ -1,5 +1,7 @@
+import multiprocessing
 import time
 from collections import defaultdict
+from multiprocessing import Process
 from typing import List
 import re
 
@@ -60,10 +62,30 @@ def process_input_part_1() -> int:
     return min(seed_locations)
 
 
+def calculate_minimum(seed_range_start, seed_range_end, seeds_mapping_in_order, queue):
+    print(f"new process {seed_range_start}")
+    minimum_seed_location = queue.get()
+    minimum_seed_location[seed_range_start] = None
+    for seed in range(seed_range_start, seed_range_start + seed_range_end - 1):
+        seed_destination = seed
+        for mapping_element in seeds_mapping_in_order.values():  # mapping_element = e.g. seed-to-soil range
+            for mapping_range_dict in mapping_element:
+                if mapping_range_dict["range_start"] <= seed_destination <= mapping_range_dict["range_end"]:
+                    seed_destination = seed_destination - mapping_range_dict["range_start"] + mapping_range_dict["destination"]
+                    break
+        if not minimum_seed_location.get(seed_range_start) or seed_destination < minimum_seed_location[seed_range_start]:
+            minimum_seed_location[seed_range_start] = seed_destination
+    queue.put(minimum_seed_location)
+
+    return minimum_seed_location
+
+
+minimums = {}
+
+
 def process_input_part_2() -> int:
     input_lines = get_input_lines()
 
-    seeds = []
     seeds_mapping_in_order = defaultdict(list)
     mapping_locations = [
         "seed-to-soil map:",
@@ -94,9 +116,10 @@ def process_input_part_2() -> int:
                 "destination": destination
             })
 
-    seed_locations = []
+    queue = multiprocessing.Queue()
+    queue.put(minimums)
 
-    minimum_seed_location = None
+    processes = []
 
     seed_range_start = None
     seed_range_end = None
@@ -108,21 +131,19 @@ def process_input_part_2() -> int:
         if not seed_range_end:
             seed_range_end = seed
         if seed_range_start and seed_range_end:
-            print("new range")
-            for seed in range(seed_range_start, seed_range_start + seed_range_end - 1):
-                seed_destination = seed
-                for mapping_element in seeds_mapping_in_order.values():  # mapping_element = e.g. seed-to-soil range
-                    for mapping_range_dict in mapping_element:
-                        if mapping_range_dict["range_start"] <= seed_destination <= mapping_range_dict["range_end"]:
-                            seed_destination = seed_destination - mapping_range_dict["range_start"] + mapping_range_dict["destination"]
-                            break
-                if not minimum_seed_location or seed_destination < minimum_seed_location:
-                    minimum_seed_location = seed_destination
+            p = Process(target=calculate_minimum, args=(seed_range_start, seed_range_end, seeds_mapping_in_order, queue,))
+            processes.append(p)
             seed_range_start = None
             seed_range_end = None
             continue
+    for p in processes:
+        p.start()
 
-    return minimum_seed_location
+    for p in processes:
+        p.join()
+
+    minimum_list = queue.get().values()
+    return min(minimum_list)
 
 
 def main():
