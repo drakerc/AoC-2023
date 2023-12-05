@@ -1,7 +1,7 @@
 import multiprocessing
 import time
 from collections import defaultdict
-from multiprocessing import Process
+from multiprocessing import Process, Pool
 from typing import List
 import re
 
@@ -62,25 +62,29 @@ def process_input_part_1() -> int:
     return min(seed_locations)
 
 
-def calculate_minimum(seed_range_start, seed_range_end, seeds_mapping_in_order, queue):
+def calculate_minimum(argus):
+    (seed_range_start, seed_range_end, seeds_mapping_in_order) = argus
     print(f"new process {seed_range_start}")
-    minimum_seed_location = queue.get()
-    minimum_seed_location[seed_range_start] = None
-    for seed in range(seed_range_start, seed_range_start + seed_range_end - 1):
+    minimum_seed_location = None
+    total_to_process = len(range(seed_range_start, seed_range_start + seed_range_end - 1))
+    next_progress_to_display = 0.1
+    print("test")
+    for i, seed in enumerate(range(seed_range_start, seed_range_start + seed_range_end - 1)):
+        progress = (i / total_to_process) * 100
+        if progress > next_progress_to_display:
+            next_progress_to_display = next_progress_to_display + 0.1
+            print(progress)
         seed_destination = seed
         for mapping_element in seeds_mapping_in_order.values():  # mapping_element = e.g. seed-to-soil range
             for mapping_range_dict in mapping_element:
                 if mapping_range_dict["range_start"] <= seed_destination <= mapping_range_dict["range_end"]:
                     seed_destination = seed_destination - mapping_range_dict["range_start"] + mapping_range_dict["destination"]
                     break
-        if not minimum_seed_location.get(seed_range_start) or seed_destination < minimum_seed_location[seed_range_start]:
-            minimum_seed_location[seed_range_start] = seed_destination
-    queue.put(minimum_seed_location)
+        if not minimum_seed_location or seed_destination < minimum_seed_location:
+            minimum_seed_location = seed_destination
 
+    print(minimum_seed_location)
     return minimum_seed_location
-
-
-minimums = {}
 
 
 def process_input_part_2() -> int:
@@ -116,13 +120,13 @@ def process_input_part_2() -> int:
                 "destination": destination
             })
 
-    queue = multiprocessing.Queue()
-    queue.put(minimums)
-
     processes = []
 
     seed_range_start = None
     seed_range_end = None
+
+    seed_ranges = []
+    
     for seed in seeds_input:
         seed = int(seed)
         if not seed_range_start:
@@ -131,19 +135,15 @@ def process_input_part_2() -> int:
         if not seed_range_end:
             seed_range_end = seed
         if seed_range_start and seed_range_end:
-            p = Process(target=calculate_minimum, args=(seed_range_start, seed_range_end, seeds_mapping_in_order, queue,))
-            processes.append(p)
+            seed_ranges.append([seed_range_start, seed_range_end, seeds_mapping_in_order])
             seed_range_start = None
             seed_range_end = None
             continue
-    for p in processes:
-        p.start()
 
-    for p in processes:
-        p.join()
+    seed_ranges = tuple(seed_ranges)
+    pool_r = Pool(len(seed_ranges))
 
-    minimum_list = queue.get().values()
-    return min(minimum_list)
+    return min(pool_r.map(calculate_minimum, seed_ranges))
 
 
 def main():
