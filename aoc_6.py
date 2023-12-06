@@ -1,10 +1,6 @@
-import multiprocessing
-import time
 from collections import defaultdict
 from functools import reduce
-from multiprocessing import Process
 from typing import List
-import re
 
 
 def get_input_lines() -> List[str]:
@@ -13,18 +9,11 @@ def get_input_lines() -> List[str]:
     return input_lines
 
 
-def process_input_part_1() -> int:
-    input_lines = get_input_lines()
-
-    time_line = input_lines[0]
-    distance_line = input_lines[1]
+def do_calculations(max_times: List[int], min_distances: List[int]):
     possible_solutions = defaultdict(int)
 
-    possible_times = [int(time_line) for time_line in time_line.split()[1:]]
-    distances = [int(distance_line) for distance_line in distance_line.split()[1:]]
-
-    for index, max_time in enumerate(possible_times):
-        min_distance = distances[index]
+    for index, max_time in enumerate(max_times):
+        min_distance = min_distances[index]
 
         for charging_time in range(1, max_time):
             remaining_time = max_time - charging_time
@@ -33,29 +22,25 @@ def process_input_part_1() -> int:
                 possible_solutions[index] = possible_solutions[index] + 1
 
     return reduce(lambda x, y: x*y, possible_solutions.values())
+
+
+def process_input_part_1() -> int:
+    input_lines = get_input_lines()
+
+    max_times = [int(time_line) for time_line in input_lines[0].split()[1:]]
+    min_distances = [int(distance_line) for distance_line in input_lines[1].split()[1:]]
+
+    return do_calculations(max_times, min_distances)
 
 
 def process_input_part_2() -> int:
     input_lines = get_input_lines()
 
-    time_line = input_lines[0].split(":")[1].replace(" ", "")
-    distance_line = input_lines[1].split(":")[1].replace(" ", "")
-    possible_solutions = defaultdict(int)
+    # there will be just one element in there, but this can help with reusing the calculations function
+    max_times = [int(input_lines[0].split(":")[1].replace(" ", ""))]
+    min_distances = [int(input_lines[1].split(":")[1].replace(" ", ""))]
 
-    possible_times = [int(time_line) for time_line in [time_line]]
-    distances = [int(distance_line) for distance_line in [distance_line]]
-
-    for index, max_time in enumerate(possible_times):
-        min_distance = distances[index]
-
-        for charging_time in range(1, max_time):
-            # print(f"{charging_time}, max={max_time}")
-            remaining_time = max_time - charging_time
-            traveled_distance = charging_time * remaining_time
-            if traveled_distance > min_distance:
-                possible_solutions[index] = possible_solutions[index] + 1
-
-    return reduce(lambda x, y: x*y, possible_solutions.values())
+    return do_calculations(max_times, min_distances)
 
 
 def main():
