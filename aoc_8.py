@@ -47,8 +47,50 @@ def process_input_part_1() -> int:
     return steps_taken
 
 
+def process_input_part_2() -> int:
+    input_lines = get_input_lines()
+
+    instructions = input_lines[0]
+
+    node_steps = {}
+    steps_taken = 0
+
+    for node in input_lines[2:]:
+        node_elements = node.split()
+        node_start = node_elements[0]
+
+        left_turn = ''.join(filter(str.isalpha, node_elements[2]))
+        right_turn = ''.join(filter(str.isalpha, node_elements[3]))
+
+        node_steps[node_start] = {"left": left_turn, "right": right_turn}
+
+    current_step = 0
+    current_nodes = [node for node in node_steps.keys() if node[-1] == "A"]
+    while True:
+        if all([node[-1] == "Z" for node in current_nodes]):
+            break
+        try:
+            current_step_direction = instructions[current_step]
+        except IndexError:
+            current_step = 0
+            current_step_direction = instructions[current_step]
+
+        if current_step_direction == "L":
+            for index, value in enumerate(current_nodes):
+                current_nodes[index] = node_steps[value]["left"]
+        if current_step_direction == "R":
+            for index, value in enumerate(current_nodes):
+                current_nodes[index] = node_steps[value]["right"]
+        steps_taken = steps_taken + 1
+        current_step = current_step + 1
+        continue
+
+    return steps_taken
+
+
 def main():
     print(process_input_part_1())
+    print(process_input_part_2())
 
 
 if __name__ == "__main__":
